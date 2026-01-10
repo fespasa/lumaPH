@@ -1,18 +1,34 @@
 import { useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { PaymentWall } from '../components/payment/PaymentWall';
+import { useAuth } from '../context/AuthContext';
 import { Brain, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const MentalHealthTriage = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
-    const [step, setStep] = useState<'selection' | 'form' | 'success'>('selection');
+    const [step, setStep] = useState<'selection' | 'payment' | 'form' | 'success'>('selection');
     const [specialty, setSpecialty] = useState<'psychology' | 'psychiatry' | null>(null);
     const [reason, setReason] = useState('');
     const [phone, setPhone] = useState('');
 
     const handleSelection = (type: 'psychology' | 'psychiatry') => {
         setSpecialty(type);
+
+        if (user?.subscriptionPlan === 'premium') {
+            setStep('form');
+        } else {
+            setStep('payment');
+        }
+    };
+
+    const handlePaymentComplete = () => {
+        setStep('form');
+    };
+
+    const handleSubscribe = () => {
         setStep('form');
     };
 
@@ -24,6 +40,15 @@ export const MentalHealthTriage = () => {
     const handleFinish = () => {
         navigate('/');
     };
+
+    if (step === 'payment') {
+        return (
+            <PaymentWall
+                onPaymentComplete={handlePaymentComplete}
+                onSubscribe={handleSubscribe}
+            />
+        );
+    }
 
     if (step === 'selection') {
         return (

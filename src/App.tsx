@@ -15,8 +15,8 @@ import { Register } from './pages/auth/Register';
 
 import { AdminSupport } from './pages/AdminSupport';
 import { AdminForm } from './pages/AdminForm';
-
 import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { PatientIndex } from './pages/admin/PatientIndex';
 
 function App() {
   return (
@@ -30,7 +30,10 @@ function App() {
 
             {/* Admin Route */}
             <Route element={<ProtectedRoute requiredRole="admin" />}>
-              <Route path="/admin" element={<AdminDashboard />} />
+              <Route element={<Layout />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/patients" element={<PatientIndex />} />
+              </Route>
             </Route>
 
             {/* Protected Routes */}
@@ -43,6 +46,7 @@ function App() {
                 <Route path="triage/mental-health" element={<MentalHealthTriage />} />
                 <Route path="results" element={<Results />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="profile/:userId" element={<Profile />} />
                 <Route path="admin-support" element={<AdminSupport />} />
                 <Route path="admin-support/form" element={<AdminForm />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

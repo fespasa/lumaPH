@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useTriage } from '../context/TriageContext';
+import { useAuth } from '../context/AuthContext';
 import { PEDIATRICS_QUESTIONS } from '../data/pediatrics';
 import { QuestionFlow } from '../components/triage/QuestionFlow';
+import { PaymentWall } from '../components/payment/PaymentWall';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 
 export const PediatricsTriage = () => {
     const { state, dispatch } = useTriage();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [showForm, setShowForm] = useState(true);
+    const [showPayment, setShowPayment] = useState(false);
 
     // Form State
     const [dob, setDob] = useState('');
@@ -20,8 +24,7 @@ export const PediatricsTriage = () => {
         // If we are already in the module and not complete, hide form
         if (state.currentModuleId === 'pediatrics' && state.currentQuestionId) {
             setShowForm(false);
-            // Restore patient data from state if needed? 
-            // Actually if we reload, we might lose local state, but Context should hold it.
+            setShowPayment(false);
         }
     }, [state.currentModuleId, state.currentQuestionId]);
 
@@ -34,9 +37,27 @@ export const PediatricsTriage = () => {
         return months <= 0 ? 0 : months;
     };
 
-    const startTriage = () => {
+    const handleStartRequest = () => {
         if (!dob) return;
 
+        if (user?.subscriptionPlan === 'premium') {
+            startTriage();
+        } else {
+            setShowPayment(true);
+            setShowForm(false);
+        }
+    };
+
+    const handlePaymentComplete = () => {
+        startTriage();
+    };
+
+    const handleSubscribe = () => {
+        alert("Redirigiendo a suscripción...");
+        startTriage();
+    };
+
+    const startTriage = () => {
         const ageMonths = calculateAgeMonths(dob);
 
         // Save data
@@ -57,6 +78,7 @@ export const PediatricsTriage = () => {
         });
 
         setShowForm(false);
+        setShowPayment(false);
     };
 
     const handleComplete = () => {
@@ -66,6 +88,15 @@ export const PediatricsTriage = () => {
     const handleCriticalStop = () => {
         navigate('/results?emergency=true');
     };
+
+    if (showPayment) {
+        return (
+            <PaymentWall
+                onPaymentComplete={handlePaymentComplete}
+                onSubscribe={handleSubscribe}
+            />
+        );
+    }
 
     if (showForm) {
         return (
@@ -115,7 +146,7 @@ export const PediatricsTriage = () => {
                         variant="primary"
                         className="w-full"
                         disabled={!dob}
-                        onClick={startTriage}
+                        onClick={handleStartRequest}
                     >
                         Comenzar Triaje
                     </Button>

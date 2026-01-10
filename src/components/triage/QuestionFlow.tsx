@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useTriage } from '../../context/TriageContext';
 import type { Question } from '../../lib/types';
 import { Card } from '../ui/Card';
+import { ProgressBar } from '../ui/ProgressBar';
 import { Button } from '../ui/Button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -12,11 +13,60 @@ interface QuestionFlowProps {
     onCriticalStop: () => void;
 }
 
+// Helper to calculate longest path from a given node
+const calculateMaxDepth = (startId: string, allQuestions: Record<string, Question>): number => {
+    const memo: Record<string, number> = {};
+    const visited = new Set<string>();
+
+    const getDepth = (id: string): number => {
+        if (visited.has(id)) return 0; // Cycle detected, safe exit
+        if (memo[id] !== undefined) return memo[id];
+
+        visited.add(id);
+        const question = allQuestions[id];
+        if (!question) {
+            visited.delete(id);
+            return 0;
+        }
+
+        let maxChildDepth = 0;
+
+        if (typeof question.next === 'string') {
+            maxChildDepth = getDepth(question.next);
+        } else if (Array.isArray(question.next)) {
+            // Check all branches
+            const branchDepths = question.next.map(b => getDepth(b.questionId));
+            maxChildDepth = branchDepths.length > 0 ? Math.max(...branchDepths) : 0;
+        }
+
+        visited.delete(id);
+        const depth = 1 + maxChildDepth;
+        memo[id] = depth;
+        return depth;
+    };
+
+    return getDepth(startId);
+};
+
 export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplete, onCriticalStop }) => {
     const { state, dispatch } = useTriage();
     const navigate = useNavigate();
 
     const currentQuestion = state.currentQuestionId ? questions[state.currentQuestionId] : null;
+
+    // Calculate progress
+    // We infer the start of the current flow from history if available, or current question.
+    // Ideally, the context should know the "startQuestionId" of the module, but looking at history[0] is a good heuristic for "where we started this session".
+    // If we just started, history is empty.
+    const startNodeId = state.history.length > 0 ? state.history[0] : state.currentQuestionId;
+
+    // Memoize the total steps calculation to avoid recalculating on every render unless startNode changes
+    const totalSteps = React.useMemo(() => {
+        if (!startNodeId) return 1;
+        return calculateMaxDepth(startNodeId, questions);
+    }, [startNodeId, questions]);
+
+    const currentStep = state.history.length + 1;
 
     // Effect to separate side-effects from rendering
     useEffect(() => {
@@ -27,10 +77,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplet
 
     // Handle Level A immediate stop
     useEffect(() => {
-        // If we answered YES to a Level A question, the maxSeverity becomes A.
-        // We should check if the *last answered question* caused this, or just check state.
-        // But we only want to trigger this ONCE when it happens.
-        // Actually, let's handle the redirection in the handleAnswer logic or separate effect.
         if (state.maxSeverity === 'A') {
             onCriticalStop();
         }
@@ -44,8 +90,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplet
         let riskLevel: 'A' | 'B' | 'C' | 'D' | undefined = undefined;
 
         // Logic: If answer is YES (true) and the question has a criticality, assign it.
-        // Spec says: "Si el usuario marca un síntoma de Nivel A -> Interumpe".
-        // So usually boolean questions trigger risk on TRUE.
         if (answer === true && currentQuestion.criticality) {
             riskLevel = currentQuestion.criticality;
         }
@@ -57,10 +101,7 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplet
             riskLevel
         });
 
-        // If Level A, the effect above will handle the stop.
-        // Otherwise calculate next question.
         if (riskLevel === 'A') {
-            // Stop immediately, don't set next question, just let effect handle.
             return;
         }
 
@@ -69,8 +110,6 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplet
         if (typeof currentQuestion.next === 'string') {
             nextId = currentQuestion.next;
         } else if (Array.isArray(currentQuestion.next)) {
-            // Logic for branching
-            // Find the first branch where condition is true (or no condition)
             const matchedBranch = currentQuestion.next.find(branch => {
                 if (!branch.condition) return true;
                 return branch.condition(state.patientData);
@@ -88,6 +127,10 @@ export const QuestionFlow: React.FC<QuestionFlowProps> = ({ questions, onComplet
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-140px)] w-full">
+            <div className="w-full max-w-xl mb-4 px-2 md:px-0">
+                <ProgressBar current={currentStep} total={totalSteps} />
+            </div>
+
             <AnimatePresence mode="wait">
                 <motion.div
                     key={currentQuestion.id}

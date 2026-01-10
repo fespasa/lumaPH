@@ -1,21 +1,37 @@
 import { useState, useEffect } from 'react';
 import { useTriage } from '../context/TriageContext';
+import { useAuth } from '../context/AuthContext';
 import { WOMENS_HEALTH_QUESTIONS } from '../data/womens-health';
 import { QuestionFlow } from '../components/triage/QuestionFlow';
+import { PaymentWall } from '../components/payment/PaymentWall';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '../components/ui/Button';
 
 export const WomensHealthTriage = () => {
     const { state, dispatch } = useTriage();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [showSelection, setShowSelection] = useState(true);
+    const [showPayment, setShowPayment] = useState(false);
+    const [pendingStartId, setPendingStartId] = useState<string | null>(null);
 
     useEffect(() => {
         if (state.currentModuleId === 'womens-health' && state.currentQuestionId) {
             setShowSelection(false);
+            setShowPayment(false);
         }
     }, [state.currentModuleId, state.currentQuestionId]);
+
+    const handleModuleRequest = (startId: string) => {
+        // Check legacy or premium status
+        if (user?.subscriptionPlan === 'premium') {
+            startModule(startId);
+        } else {
+            setPendingStartId(startId);
+            setShowPayment(true);
+        }
+    };
 
     const startModule = (startId: string) => {
         dispatch({
@@ -24,6 +40,24 @@ export const WomensHealthTriage = () => {
             startQuestionId: startId
         });
         setShowSelection(false);
+        setShowPayment(false);
+        setPendingStartId(null);
+    };
+
+    const handlePaymentComplete = () => {
+        // Mock payment success
+        if (pendingStartId) {
+            startModule(pendingStartId);
+        }
+    };
+
+    const handleSubscribe = () => {
+        // Navigate to subscription page or handle subscription logic
+        alert("En una app real, esto te llevaría al checkout de suscripción");
+        // For demo, let's treat it as paying for the session or upgrading
+        if (pendingStartId) {
+            startModule(pendingStartId);
+        }
     };
 
     const handleComplete = () => {
@@ -33,6 +67,15 @@ export const WomensHealthTriage = () => {
     const handleCriticalStop = () => {
         navigate('/results?emergency=true');
     };
+
+    if (showPayment) {
+        return (
+            <PaymentWall
+                onPaymentComplete={handlePaymentComplete}
+                onSubscribe={handleSubscribe}
+            />
+        );
+    }
 
     if (showSelection) {
         return (
@@ -45,14 +88,14 @@ export const WomensHealthTriage = () => {
                 <div className="grid gap-4">
                     <Button
                         size="lg"
-                        onClick={() => startModule('PREG_START')}
+                        onClick={() => handleModuleRequest('PREG_START')}
                         className="h-20 text-xl bg-pink-500 hover:bg-pink-600 shadow-pink-500/30"
                     >
                         Estoy Embarazada
                     </Button>
                     <Button
                         size="lg"
-                        onClick={() => startModule('POST_START')}
+                        onClick={() => handleModuleRequest('POST_START')}
                         className="h-20 text-xl bg-pink-400 hover:bg-pink-500 shadow-pink-400/30"
                     >
                         Postparto (Puérpera)
@@ -60,7 +103,7 @@ export const WomensHealthTriage = () => {
                     <Button
                         size="lg"
                         variant="secondary"
-                        onClick={() => startModule('GYN_A1')}
+                        onClick={() => handleModuleRequest('GYN_A1')}
                         className="h-20 text-xl"
                     >
                         Otra consulta ginecológica
