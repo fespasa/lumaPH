@@ -6,22 +6,41 @@ export interface PatientData {
     ageMonths?: number;
     weight?: number;
     isChronic?: boolean;
+    temperature?: number;
+    // Generic dynamic data
+    [key: string]: any;
 }
 
 export type Condition = (data: PatientData) => boolean;
 
 export interface Branch {
     questionId: QuestionId;
-    condition?: Condition; // Not serializable in JSON but fine for code-defined data
+    condition?: Condition;
+}
+
+export interface Option {
+    label: string;
+    value: string | number | boolean;
+    riskLevel?: Severity; // If this option is selected, upgrade risk to this level
+    exclusive?: boolean; // If true, selecting this deselects others (e.g. "None of the above")
 }
 
 export interface Question {
     id: QuestionId;
     text: string;
-    type: 'boolean' | 'numeric' | 'select' | 'info';
-    options?: { label: string; value: string | number }[];
-    criticality?: 'A' | 'B' | 'C' | 'D';
-    next?: QuestionId | Branch[]; // Can be a string or a list of conditional branches
+    type: 'boolean' | 'numeric' | 'multiple_choice' | 'single_choice' | 'info' | 'text';
+    options?: Option[]; // For multiple/single choice
+    // For numeric inputs
+    min?: number;
+    max?: number;
+    unit?: string;
+
+    // Logic:
+    // If ANY selected option has a riskLevel of 'A', we might want to stop immediately.
+    // criticalStop: means if the resulting severity is A (or specified), stop flow.
+    criticalStop?: boolean;
+
+    next?: QuestionId | Branch[];
 }
 
 export interface TriageModule {
@@ -34,7 +53,12 @@ export interface TriageModule {
 export interface TriageState {
     currentModuleId: string | null;
     currentQuestionId: QuestionId | null;
-    answers: Record<QuestionId, boolean | string | number>;
+    // Answers can be:
+    // boolean (YES/NO)
+    // number (Temperature)
+    // string[] (Multiple choice IDs)
+    // string (Single choice / Text)
+    answers: Record<QuestionId, any>;
     maxSeverity: Severity;
     history: QuestionId[];
     isComplete: boolean;
@@ -49,7 +73,7 @@ export const SEVERITY_ORDER: Record<string, number> = {
 };
 
 export function determineSeverity(current: Severity, newSeverity: Severity): Severity {
-    if (!current) return newSeverity;
     if (!newSeverity) return current;
+    if (!current) return newSeverity;
     return SEVERITY_ORDER[newSeverity] > SEVERITY_ORDER[current] ? newSeverity : current;
 }

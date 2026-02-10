@@ -74,7 +74,7 @@ export const PediatricsTriage = () => {
         dispatch({
             type: 'START_MODULE',
             moduleId: 'pediatrics',
-            startQuestionId: 'A1'
+            startQuestionId: 'P_A_INITIAL'
         });
 
         setShowForm(false);

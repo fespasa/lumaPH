@@ -4,7 +4,7 @@ import { determineSeverity } from '../lib/types';
 
 type Action =
     | { type: 'START_MODULE'; moduleId: string; startQuestionId: QuestionId }
-    | { type: 'ANSWER_QUESTION'; questionId: QuestionId; answer: boolean | string | number; riskLevel?: Severity }
+    | { type: 'ANSWER_QUESTION'; questionId: QuestionId; answer: any; riskLevel?: Severity }
     | { type: 'SET_NEXT_QUESTION'; questionId: QuestionId | null } // null means end of flow
     | { type: 'SET_PATIENT_DATA'; data: PatientData }
     | { type: 'RESET' };

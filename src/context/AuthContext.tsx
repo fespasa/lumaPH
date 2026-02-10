@@ -11,6 +11,7 @@ export interface User {
     // Base biometrics (optional in base user, but good to have)
     dob?: string;
     mutua?: string;
+    medicalHistory?: string[];
 }
 
 // Extended Data Interfaces

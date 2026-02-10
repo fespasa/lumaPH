@@ -6,58 +6,45 @@ import { QuestionFlow } from '../components/triage/QuestionFlow';
 import { PaymentWall } from '../components/payment/PaymentWall';
 import { useNavigate } from 'react-router-dom';
 
-import { Button } from '../components/ui/Button';
-
 export const WomensHealthTriage = () => {
     const { state, dispatch } = useTriage();
     const { user } = useAuth();
     const navigate = useNavigate();
-    const [showSelection, setShowSelection] = useState(true);
+    const [isChecking, setIsChecking] = useState(true);
     const [showPayment, setShowPayment] = useState(false);
-    const [pendingStartId, setPendingStartId] = useState<string | null>(null);
 
     useEffect(() => {
         if (state.currentModuleId === 'womens-health' && state.currentQuestionId) {
-            setShowSelection(false);
-            setShowPayment(false);
+            setIsChecking(false);
+            return;
         }
-    }, [state.currentModuleId, state.currentQuestionId]);
 
-    const handleModuleRequest = (startId: string) => {
-        // Check legacy or premium status
-        if (user?.subscriptionPlan === 'premium') {
-            startModule(startId);
-        } else {
-            setPendingStartId(startId);
-            setShowPayment(true);
+        if (isChecking) {
+            if (user?.subscriptionPlan === 'premium') {
+                startModule();
+            } else {
+                setShowPayment(true);
+                setIsChecking(false);
+            }
         }
-    };
+    }, [user, state.currentModuleId]);
 
-    const startModule = (startId: string) => {
+    const startModule = () => {
         dispatch({
             type: 'START_MODULE',
             moduleId: 'womens-health',
-            startQuestionId: startId
+            startQuestionId: 'WH_PROFILE_SELECT'
         });
-        setShowSelection(false);
+        setIsChecking(false);
         setShowPayment(false);
-        setPendingStartId(null);
     };
 
     const handlePaymentComplete = () => {
-        // Mock payment success
-        if (pendingStartId) {
-            startModule(pendingStartId);
-        }
+        startModule();
     };
 
     const handleSubscribe = () => {
-        // Navigate to subscription page or handle subscription logic
-        alert("En una app real, esto te llevaría al checkout de suscripción");
-        // For demo, let's treat it as paying for the session or upgrading
-        if (pendingStartId) {
-            startModule(pendingStartId);
-        }
+        startModule();
     };
 
     const handleComplete = () => {
@@ -77,40 +64,8 @@ export const WomensHealthTriage = () => {
         );
     }
 
-    if (showSelection) {
-        return (
-            <div className="max-w-xl mx-auto space-y-6 animate-fade-in text-center">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-slate-800">Salud de la Mujer</h1>
-                    <p className="text-slate-500">Seleccione el motivo de su consulta</p>
-                </div>
-
-                <div className="grid gap-4">
-                    <Button
-                        size="lg"
-                        onClick={() => handleModuleRequest('PREG_START')}
-                        className="h-20 text-xl bg-pink-500 hover:bg-pink-600 shadow-pink-500/30"
-                    >
-                        Estoy Embarazada
-                    </Button>
-                    <Button
-                        size="lg"
-                        onClick={() => handleModuleRequest('POST_START')}
-                        className="h-20 text-xl bg-pink-400 hover:bg-pink-500 shadow-pink-400/30"
-                    >
-                        Postparto (Puérpera)
-                    </Button>
-                    <Button
-                        size="lg"
-                        variant="secondary"
-                        onClick={() => handleModuleRequest('GYN_A1')}
-                        className="h-20 text-xl"
-                    >
-                        Otra consulta ginecológica
-                    </Button>
-                </div>
-            </div>
-        );
+    if (isChecking) {
+        return <div>Cargando...</div>;
     }
 
     return (

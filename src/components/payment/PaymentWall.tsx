@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { CreditCard, Wallet, Milestone, Check, Star } from 'lucide-react';
+import { CreditCard, Wallet, Check, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface PaymentWallProps {

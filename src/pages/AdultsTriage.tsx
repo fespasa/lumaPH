@@ -35,7 +35,7 @@ export const AdultsTriage = () => {
         dispatch({
             type: 'START_MODULE',
             moduleId: 'adults',
-            startQuestionId: 'A1'
+            startQuestionId: 'A_CRITICAL_1'
         });
         setIsChecking(false);
         setShowPayment(false);
